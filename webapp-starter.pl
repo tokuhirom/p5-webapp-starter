@@ -111,7 +111,6 @@ use File::Basename;
 use lib File::Spec->catdir(dirname(__FILE__), 'lib');
 use <% package %>::Web;
 use Plack::Builder;
-use Plack::MIME;
 
 builder {
     enable 'Plack::Middleware::Static',
