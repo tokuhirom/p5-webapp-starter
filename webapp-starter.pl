@@ -86,6 +86,7 @@ requires 'Mouse';
 requires 'Log::Dispatch';
 requires 'parent';
 requires 'DBIx::Skinny';
+requires 'DBD::SQLite';
 
 tests 't/*.t t/*/*.t t/*/*/*.t t/*/*/*/*.t';
 test_requires 'Test::More';
@@ -157,12 +158,16 @@ sub bootstrap {
     return $c;
 }
 
-sub db {
-    my ($self) = @_;
-    $self->{db} ||= do {
-        <% package %>::DB->new($self->config->{'DB'});
-    };
-}
+has db => (
+    is => 'ro',
+    isa => '<% package %>::DB',
+    lazy => 1,
+    default => sub {
+        my $self = shift;
+        my $conf = $self->config->{'DB'} || die "missing configuration for DB";
+        <% package %>::DB->new($conf);
+    },
+);
 
 no Mouse; __PACKAGE__->meta->make_immutable;
 
@@ -283,7 +288,7 @@ sub to_app {
         no warnings 'redefine';
         local *<% name %>::context = sub { $c };
         if (my $m = <% name %>::Web::C->router->match($env)) {
-            $m->{code}->($c);
+            $m->{code}->($c, $m);
             $c->session->response_filter($c->res);
             return $c->res->finalize;
         } else {
@@ -485,7 +490,17 @@ my $c = <% package %>->bootstrap;
         outputs => [
             [ 'Screen', min_level => 'warning' ],
         ]
-    }
+    },
+    DB => {
+        dsn      => 'dbi:SQLite:',
+        username => '',
+        password => '',
+        connect_options => +{
+            sqlite_unicode => 1,
+          # 'mysql_enable_utf8' => 1,
+          # 'mysql_read_default_file' => '/etc/mysql/my.cnf',
+        },
+    },
 }
 @@ config/production.pl
 +{
