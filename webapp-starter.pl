@@ -195,6 +195,10 @@ use Module::Find qw/useall/;
 use Encode;
 use Log::Dispatch;
 use <% package %>::Web::C;
+use HTTP::Session;
+use HTTP::Session::State::Cookie;
+use HTTP::Session::Store::DBM;
+use File::Spec;
 
 extends '<% package %>';
 
@@ -203,12 +207,12 @@ useall '<% path %>::Web';
 our $VERSION = '0.01';
 
 has 'log' => (
-    is => 'ro',
-    isa => 'Log::Dispatch',
-    lazy => 1,
+    is      => 'ro',
+    isa     => 'Log::Dispatch',
+    lazy    => 1,
     default => sub {
         my $self = shift;
-        Log::Dispatch->new(%{$self->config->{'Log::Dispatch'} || {}});
+        Log::Dispatch->new( %{ $self->config->{'Log::Dispatch'} || {} } );
     },
 );
 
@@ -247,6 +251,24 @@ has res => (
     },
 );
 
+has session => (
+    is => 'ro',
+    isa => 'HTTP::Session',
+    lazy => 1,
+    default => sub {
+        my $self = shift;
+        HTTP::Session->new(
+            store => HTTP::Session::Store::DBM->new(
+                file => File::Spec->catfile(File::Spec->tmpdir, "<% name %>.$<.dbm"),
+            ),
+            state => HTTP::Session::State::Cookie->new(
+                name => '<% name %>_sid',
+            ),
+            request => $self->req,
+        );
+    },
+);
+
 sub request  { shift->req(@_) }
 sub response { shift->res(@_) }
 
@@ -261,6 +283,7 @@ sub to_app {
         local *<% name %>::context = sub { $c };
         if (my $m = <% name %>::Web::C->router->match($env)) {
             $m->{code}->($c);
+            $c->session->response_filter($c->res);
             return $c->res->finalize;
         } else {
             my $content = 'not found';
@@ -292,6 +315,13 @@ use Router::Simple::Sinatraish;
 get '/' => sub {
     my ($c) = @_;
     $c->render('index.tx');
+};
+
+get '/counter' => sub {
+    my ($c) = @_;
+    $c->session->set('counter' => ($c->session->get('counter')||0)+1);
+    $c->res->status(200);
+    $c->res->body($c->session->session_id . ':' . $c->session->get('counter'));
 };
 
 1;
@@ -364,6 +394,32 @@ my $app = Plack::Util::load_psgi '<% name %>.psgi';
 
 my $mech = Test::WWW::Mechanize::PSGI->new(app => $app);
 $mech->get_ok('/');
+
+done_testing;
+
+@@ t/03_session.t
+use strict;
+use warnings;
+use Plack::Test;
+use Plack::Util;
+use Test::More;
+use Test::WWW::Mechanize::PSGI;
+use t::Util;
+
+my $app = Plack::Util::load_psgi '<% name %>.psgi';
+
+my $mech = Test::WWW::Mechanize::PSGI->new(app => $app);
+$mech->get_ok('/counter');
+my ($sid1, $cnt1) = split /:/, $mech->content;
+is $cnt1, 1;
+$mech->get_ok('/counter');
+my ($sid2, $cnt2) = split /:/, $mech->content;
+is $sid1, $sid2;
+is $cnt2, 2;
+$mech->get_ok('/counter');
+my ($sid3, $cnt3) = split /:/, $mech->content;
+is $sid1, $sid3;
+is $cnt3, 3;
 
 done_testing;
 
