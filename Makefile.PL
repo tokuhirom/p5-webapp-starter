@@ -7,7 +7,7 @@ requires 'Router::Simple' => 0.06;
 requires 'Data::Section::Simple';
 requires 'Text::Xslate::Bridge::TT2Like' => 0.00003;
 requires 'DBIx::Skinny';
-
+requires 'Module::Install::AuthorTests';
 
 readme_markdown_from 'lib/App/WebAppStarter.pm';
 tests 't/*.t t/*/*.t t/*/*/*.t t/*/*/*/*.t';
