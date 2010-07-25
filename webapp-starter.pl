@@ -113,8 +113,6 @@ use <% package %>::Web;
 use Plack::Builder;
 use Plack::MIME;
 
-delete $Plack::MIME::MIME_TYPES->{$_} for qw/.pl .pm .yml .json/;
-
 builder {
     enable 'Plack::Middleware::Static',
         path => qr{^/static/},
