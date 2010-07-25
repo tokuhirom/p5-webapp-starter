@@ -11,6 +11,7 @@ requires 'DBIx::Skinny';
 requires 'Module::Install::AuthorTests';
 requires 'HTTP::Session' => 0.40;
 
+install_script 'webapp-starter.pl';
 readme_markdown_from 'webapp-starter.pl';
 tests 't/*.t t/*/*.t t/*/*/*.t t/*/*/*/*.t';
 test_requires 'Test::More';
