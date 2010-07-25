@@ -2,7 +2,11 @@ use inc::Module::Install;
 name 'App-WebAppStarter';
 all_from 'lib/App/WebAppStarter.pm';
 
-# requires '';
+requires 'Text::Xslate' => 0.1047;
+requires 'Router::Simple' => 0.06;
+requires 'Data::Section::Simple';
+requires 'Text::Xslate::Bridge::TT2Like' => 0.00003;
+requires 'DBIx::Skinny';
 
 
 readme_markdown_from 'lib/App/WebAppStarter.pm';
