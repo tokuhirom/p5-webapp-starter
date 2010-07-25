@@ -128,6 +128,8 @@ use <% path %>::ConfigLoader;
 use Cwd ();
 use <% package %>::DB;
 
+our $VERSION = '0.01';
+
 has config => (
     is       => 'ro',
     isa      => 'HashRef',
@@ -189,8 +191,6 @@ use Mouse;
 use <% path %>;
 use <% path %>::ConfigLoader;
 use Text::Xslate 0.1047;
-use Plack::Request;
-use Plack::Response;
 use Path::AttrRouter;
 use Module::Find qw/useall/;
 use Encode;
@@ -200,12 +200,12 @@ use HTTP::Session;
 use HTTP::Session::State::Cookie;
 use HTTP::Session::Store::DBM;
 use File::Spec;
+use <% package %>::Web::Response;
+use <% package %>::Web::Request;
 
 extends '<% package %>';
 
 useall '<% path %>::Web';
-
-our $VERSION = '0.01';
 
 has 'log' => (
     is      => 'ro',
@@ -235,7 +235,7 @@ has req => (
     lazy    => 1,
     default => sub {
         my $self = shift;
-        Plack::Request->new( $self->env );
+        <% package %>::Web::Request->new( $self->env );
     }
 );
 
@@ -248,7 +248,7 @@ has res => (
     is      => 'ro',
     isa     => 'Plack::Response',
     default => sub {
-        Plack::Response->new;
+        <% package %>::Web::Response->new;
     },
 );
 
@@ -297,6 +297,21 @@ my $tx = Text::Xslate->new(
     syntax => 'TTerse',
     module => ['Text::Xslate::Bridge::TT2Like'],
     path   => [__PACKAGE__->root . "/tmpl"],
+    function => {
+        c => sub { NoPaste::context() },
+        uri_for => sub {
+            my ( $path, $args ) = @_;
+            my $req = NoPaste::context()->req();
+            my $uri = $req->base;
+            $uri->path( do {
+                my $p = $uri->path . $path;
+                $p =~ s!//!!;
+                $p;
+            } );
+            $uri->query_form(@$args) if $args;
+            $uri;
+        },
+    },
 );
 sub render {
     my ($self, @args) = @_;
@@ -308,9 +323,33 @@ sub render {
 
 no Mouse;__PACKAGE__->meta->make_immutable;
 
+@@ lib/<% path %>/Web/Request.pm
+package <% package %>::Web::Request;
+use strict;
+use warnings;
+use parent qw/Plack::Request/;
+
+1;
+
+@@ lib/<% path %>/Web/Response.pm
+package <% package %>::Web::Response;
+use strict;
+use warnings;
+use parent qw/Plack::Response/;
+
+sub not_found {
+    my ($self) = @_;
+    $self->status(404);
+    $self->body('not found');
+    $self;
+}
+
+1;
+
 @@ lib/<% path %>/Web/C.pm
 package <% package %>::Web::C;
 use strict;
+use warnings;
 use Router::Simple::Sinatraish;
 
 get '/' => sub {
